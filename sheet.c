@@ -12,6 +12,7 @@
 #include <fcntl.h>
 
 #define MAX 4096
+#define VERSION "0.2"
 static char list[MAX][4096];
 static int n,sel,top;
 static char current_dir[4096];
@@ -42,6 +43,32 @@ static void save_config() {
         fprintf(f, "SETTER=%s\n", wallsetter);
         fclose(f);
     }
+}
+
+static void save_last_wallpaper(const char *wallpaper) {
+    char last_path[4096];
+    snprintf(last_path, sizeof(last_path), "%s/.sheet_last_wallpaper", getenv("HOME"));
+    FILE *f = fopen(last_path, "w");
+    if (f) {
+        fprintf(f, "%s\n", wallpaper);
+        fclose(f);
+    }
+}
+
+static char* load_last_wallpaper() {
+    static char last_wallpaper[4096];
+    char last_path[4096];
+    snprintf(last_path, sizeof(last_path), "%s/.sheet_last_wallpaper", getenv("HOME"));
+    FILE *f = fopen(last_path, "r");
+    if (f) {
+        if (fgets(last_wallpaper, sizeof(last_wallpaper), f)) {
+            last_wallpaper[strcspn(last_wallpaper, "\n")] = 0;
+            fclose(f);
+            return last_wallpaper;
+        }
+        fclose(f);
+    }
+    return NULL;
 }
 
 static void load_config() {
@@ -155,15 +182,13 @@ static void kill_wallpaper_processes() {
     }
 }
 
-static void set_wallpaper() {
-    if (n == 0) return;
-
+static void set_wallpaper_from_file(const char *file) {
     kill_wallpaper_processes();
 
     pid_t pid = fork();
     if (pid == 0) {
         setsid();
-        
+
         pid_t pid2 = fork();
         if (pid2 == 0) {
             int devnull = open("/dev/null", O_WRONLY);
@@ -172,12 +197,12 @@ static void set_wallpaper() {
                 dup2(devnull, STDERR_FILENO);
                 close(devnull);
             }
-            
+
             if (strcmp(wallsetter, "feh") == 0) {
-                char *args[] = {"feh", "--bg-scale", list[sel], NULL};
+                char *args[] = {"feh", "--bg-scale", (char*)file, NULL};
                 execvp("feh", args);
             } else {
-                char *args[] = {"swaybg", "-m", "fill", "-i", list[sel], NULL};
+                char *args[] = {"swaybg", "-m", "fill", "-i", (char*)file, NULL};
                 execvp("swaybg", args);
             }
             perror("execvp");
@@ -187,9 +212,33 @@ static void set_wallpaper() {
         }
     } else if (pid > 0) {
         waitpid(pid, NULL, 0);
-        mvprintw(LINES-1, 0, "Wallpaper set! (daemonized)");
-        clrtoeol();
-        refresh();
+        save_last_wallpaper(file);
+        if (isatty(STDOUT_FILENO)) {
+            mvprintw(LINES-1, 0, "Wallpaper set! (daemonized)");
+            clrtoeol();
+            refresh();
+        } else {
+            printf("Wallpaper set: %s\n", file);
+        }
+    }
+}
+
+static void set_wallpaper() {
+    if (n == 0) return;
+    set_wallpaper_from_file(list[sel]);
+}
+
+static void restore_last_wallpaper() {
+    char *last_wallpaper = load_last_wallpaper();
+    if (last_wallpaper) {
+        struct stat st;
+        if (stat(last_wallpaper, &st) == 0) {
+            set_wallpaper_from_file(last_wallpaper);
+        } else {
+            fprintf(stderr, "Last wallpaper file not found: %s\n", last_wallpaper);
+        }
+    } else {
+        fprintf(stderr, "No last wallpaper saved.\n");
     }
 }
 
@@ -275,17 +324,50 @@ static void first_time_setup() {
     refresh();
 }
 
+static void print_help() {
+    printf("sheet - Terminal wallpaper selector\n");
+    printf("Version: %s\n\n", VERSION);
+    printf("Usage: sheet [OPTION] [DIRECTORY]\n\n");
+    printf("Options:\n");
+    printf("  -h, --help     Display this help message\n");
+    printf("  -v, --version  Display version information\n");
+    printf("  -r, --restore  Restore last set wallpaper\n");
+    printf("\nIf DIRECTORY is provided, it will be set as the image directory.\n");
+    printf("Otherwise, the program starts with the saved or default directory.\n");
+}
+
+static void print_version() {
+    printf("sheet version %s\n", VERSION);
+}
+
 int main(int argc, char **argv) {
     signal(SIGINT, SIG_IGN);
     signal(SIGTERM, SIG_IGN);
 
     load_config();
 
-    if (argc > 1) {
-        strcpy(current_dir, argv[1]);
-        expand_path(current_dir);
-        save_config();
-    } else if (first_time) {
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+            print_help();
+            return 0;
+        } else if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
+            print_version();
+            return 0;
+        } else if (strcmp(argv[i], "--restore") == 0 || strcmp(argv[i], "-r") == 0) {
+            restore_last_wallpaper();
+            return 0;
+        } else if (argv[i][0] != '-') {
+            strcpy(current_dir, argv[i]);
+            expand_path(current_dir);
+            save_config();
+        } else {
+            fprintf(stderr, "Unknown option: %s\n", argv[i]);
+            print_help();
+            return 1;
+        }
+    }
+
+    if (first_time && argc < 2) {
         first_time_setup();
     }
 
