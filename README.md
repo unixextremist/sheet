@@ -18,3 +18,9 @@ as someone who doesnt use a gui file manager this was made so i could differenti
 - # build
 
 `cc sheet.c -o sheet -lncurses`
+
+# options
+
+- --help or -h can be used to display all possible flags
+- --restore or -r restores the last set wallpaper
+- --version or -v displays the current version of the binary
