@@ -1,6 +1,8 @@
 # what is it?
 
-sheet is a minimal tui frontend for feh/swaybg inspired by nitrogen made for both xorg and wayland window managers
+sheet is a minimal(ish) tui frontend for feh/swaybg inspired by nitrogen made for both xorg and wayland window managers
+
+![showcase](showcase.gif)
 
 # what advantages does it have over just feh or swaybg?
 
@@ -11,6 +13,7 @@ as someone who doesnt use a gui file manager this was made so i could differenti
 - c
 - ncurses
 - feh or swaybg
+- viu
 
 - # build
 
