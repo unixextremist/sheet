@@ -14,10 +14,15 @@ as someone who doesnt use a gui file manager this was made so i could differenti
 - ncurses
 - feh or swaybg
 - viu
+- ncurses-libtinfo-devel
 
 - # build
 
-`cc sheet.c -o sheet -lncurses`
+```
+git clone https://codeberg.org/unixextremist/sheet
+cd sheet
+sudo make clean install
+```
 
 # options
 
