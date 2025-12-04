@@ -15,6 +15,7 @@ as someone who doesnt use a gui file manager this was made so i could differenti
 - feh or swaybg
 - viu
 - ncurses-libtinfo-devel
+- libtinfo (optional)
 
 - # build
 
