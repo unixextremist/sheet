@@ -180,6 +180,18 @@ static void kill_wallpaper_processes() {
         }
         pclose(fp);
     }
+
+    fp = popen("ps -o pid= -o comm= | grep xwallpaper", "r");
+    if (fp) {
+        char line[256];
+        while (fgets(line, sizeof(line), fp)) {
+            int pid;
+            if (sscanf(line, "%d", &pid) == 1) {
+                kill(pid, SIGTERM);
+            }
+        }
+        pclose(fp);
+    }
 }
 
 static void set_wallpaper_from_file(const char *file) {
@@ -201,9 +213,12 @@ static void set_wallpaper_from_file(const char *file) {
             if (strcmp(wallsetter, "feh") == 0) {
                 char *args[] = {"feh", "--bg-scale", (char*)file, NULL};
                 execvp("feh", args);
-            } else {
+            } else if (strcmp(wallsetter, "swaybg") == 0) {
                 char *args[] = {"swaybg", "-m", "fill", "-i", (char*)file, NULL};
                 execvp("swaybg", args);
+            } else if (strcmp(wallsetter, "xwallpaper") == 0) {
+                char *args[] = {"xwallpaper", "--zoom", (char*)file, NULL};
+                execvp("xwallpaper", args);
             }
             perror("execvp");
             exit(1);
@@ -259,12 +274,12 @@ static void change_config() {
     }
 
     printf("\nCurrent wallpaper setter: %s\n", wallsetter);
-    printf("Enter new setter (feh or swaybg): ");
+    printf("Enter new setter (feh, swaybg, or xwallpaper): ");
     fflush(stdout);
     char new_setter[256];
     if (fgets(new_setter, sizeof(new_setter), stdin)) {
         new_setter[strcspn(new_setter, "\n")] = 0;
-        if (strlen(new_setter) > 0 && (strcmp(new_setter, "feh") == 0 || strcmp(new_setter, "swaybg") == 0))
+        if (strlen(new_setter) > 0 && (strcmp(new_setter, "feh") == 0 || strcmp(new_setter, "swaybg") == 0 || strcmp(new_setter, "xwallpaper") == 0))
             strcpy(wallsetter, new_setter);
     }
 
@@ -305,11 +320,13 @@ static void first_time_setup() {
         expand_path(current_dir);
     }
 
-    printf("\nChoose wallpaper setter (1 for feh, 2 for swaybg): ");
+    printf("\nChoose wallpaper setter (1 for feh, 2 for swaybg, 3 for xwallpaper): ");
     fflush(stdout);
     fgets(choice, sizeof(choice), stdin);
     if (choice[0] == '2')
         strcpy(wallsetter, "swaybg");
+    else if (choice[0] == '3')
+        strcpy(wallsetter, "xwallpaper");
     else
         strcpy(wallsetter, "feh");
 
