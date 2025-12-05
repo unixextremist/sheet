@@ -14,7 +14,7 @@
 #define MAX 4096
 #define VERSION "0.2"
 static char list[MAX][4096];
-static int n,sel,top;
+static int n,sel,top_idx;
 static char current_dir[4096];
 static char wallsetter[256] = "feh";
 static int first_time = 1;
@@ -120,9 +120,9 @@ static void draw() {
         mvprintw(4, 0, "Press F1 to change directory");
     } else {
         int max_display = LINES - 3;
-        for (int i = top; i < n && i < top + max_display; i++) {
+        for (int i = top_idx; i < n && i < top_idx + max_display; i++) {
             char *filename = strrchr(list[i], '/') + 1;
-            mvprintw(i - top + 2, 0, "%s %s", i == sel ? ">" : " ", filename);
+            mvprintw(i - top_idx + 2, 0, "%s %s", i == sel ? ">" : " ", filename);
         }
     }
     refresh();
@@ -286,7 +286,7 @@ static void change_config() {
     save_config();
     n = scan(current_dir);
     sel = 0;
-    top = 0;
+    top_idx = 0;
 
     printf("\nPress any key to continue...");
     fflush(stdout);
@@ -396,7 +396,7 @@ int main(int argc, char **argv) {
     keypad(stdscr, TRUE);
 
     sel = 0;
-    top = 0;
+    top_idx = 0;
     draw();
 
     int ch;
@@ -404,12 +404,12 @@ int main(int argc, char **argv) {
         if (n > 0) {
             if (ch == KEY_DOWN && sel + 1 < n) {
                 sel++;
-                if (sel >= top + LINES - 3) top++;
+                if (sel >= top_idx + LINES - 3) top_idx++;
                 draw();
             }
             if (ch == KEY_UP && sel > 0) {
                 sel--;
-                if (sel < top) top--;
+                if (sel < top_idx) top_idx--;
                 draw();
             }
             if (ch == '\n') {
